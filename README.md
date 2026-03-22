@@ -68,6 +68,16 @@ Failure path:
 - Maven 3.9+
 - Docker
 
+## One-Command Docker Run
+
+You can run infra + both services directly from project root:
+
+```bash
+docker compose up --build -d
+```
+
+This uses root `docker-compose.yml`.
+
 ## Start Infra
 
 ```bash
@@ -165,12 +175,28 @@ docker build -t notification-api:local ./notification-api
 docker build -t notification-worker:local ./notification-worker
 ```
 
+Root multi-target `Dockerfile` is also available:
+
+```bash
+docker build --target api -t notification-api:root .
+docker build --target worker -t notification-worker:root .
+```
+
 Run manually:
 
 ```bash
 docker run --rm -p 8080:8080 --name notification-api notification-api:local
 docker run --rm -p 8082:8082 --name notification-worker notification-worker:local
 ```
+
+## Additional Documentation
+
+- `START_HERE.md`: quick onboarding and first run
+- `SYSTEM_DESIGN.md`: architecture and flow breakdown
+- `API_EXAMPLES.md`: practical API requests
+- `DEPLOYMENT_GUIDE.md`: deployment options and env config
+- `PROJECT_SUMMARY.md`: project scope and deliverables
+- `HELP.md`: troubleshooting and common commands
 
 ## Author
 
