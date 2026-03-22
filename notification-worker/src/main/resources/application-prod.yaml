@@ -1,0 +1,56 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: notification-worker
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:notification-workers}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      max-poll-records: ${KAFKA_MAX_POLL_RECORDS:10}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.sahil.notification.model.NotificationEvent
+    listener:
+      ack-mode: manual
+      concurrency: ${KAFKA_LISTENER_CONCURRENCY:3}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+worker:
+  retry:
+    max-attempts: ${WORKER_RETRY_MAX_ATTEMPTS:3}
+    backoff-ms: ${WORKER_RETRY_BACKOFF_MS:500}
+  providers:
+    timeout-ms: ${WORKER_PROVIDER_TIMEOUT_MS:3000}
+    email:
+      url: ${WORKER_PROVIDER_EMAIL_URL:}
+    sms:
+      url: ${WORKER_PROVIDER_SMS_URL:}
+    push:
+      url: ${WORKER_PROVIDER_PUSH_URL:}

@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+
+# Env files
+.env
+.env.*
+
+# Maven / Java build outputs
+target/
+*/target/
+build/
+*/build/
+
+# Maven wrapper binary (can be regenerated)
+.mvn/wrapper/maven-wrapper.jar
+
