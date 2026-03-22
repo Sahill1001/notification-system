@@ -1,9 +1,66 @@
 # Notification System
 
+Repository URL: https://github.com/Sahill1001/notification-system
+
 Two Spring Boot services:
 
 - `notification-api`: accepts notification requests, stores them in Postgres, publishes events to Kafka.
 - `notification-worker`: consumes events, applies idempotency + rate limiting, routes to provider endpoints, retries, then DLQ.
+
+## HLD (High-Level Design)
+
+Components:
+
+- Client applications call `notification-api` over HTTP.
+- `notification-api` validates input, persists notification in Postgres, and publishes an event to Kafka topic `notification-events`.
+- `notification-worker` consumes events from Kafka and processes delivery logic.
+- Redis is used by worker for idempotency and rate limiting.
+- Provider integrations (Email/SMS/Push) are called via HTTP endpoints from worker.
+- Failed events after max retries are sent to `notification-events-dlq`.
+
+High-level data flow:
+
+`Client -> notification-api -> Postgres + Kafka(notification-events) -> notification-worker -> Provider`
+
+Failure path:
+
+`notification-worker -> retry -> Kafka(notification-events-dlq)`
+
+## LLD (Low-Level Design)
+
+`notification-api` module:
+
+- `NotificationController`: exposes `POST /notifications`.
+- `NotificationService`: sets default status (`QUEUED`), saves entity, publishes event.
+- `NotificationRepository`: JPA repository for `notifications` table.
+- `NotificationProducer`: publishes JSON event to Kafka with notification id as key.
+- `KafkaTopicConfig`: auto-creates `notification-events` topic.
+
+`notification-worker` module:
+
+- `NotificationEventConsumer`: Kafka listener with manual acknowledgment and retry loop.
+- `NotificationProcessor`: orchestration for idempotency, rate-limit check, and routing.
+- `IdempotencyService`: Redis `SETNX` based duplicate protection.
+- `RateLimitService`: Redis counter + TTL (per-user per-minute throttling).
+- `ProviderRouter`: routes based on channel (`EMAIL`, `SMS`, `PUSH`).
+- `EmailProvider` / `SmsProvider` / `PushProvider`: provider-specific send adapters.
+- `ProviderHttpClient`: shared HTTP sender with timeout and response validation.
+- `RetryService`: retry policy (max attempts + backoff) and terminal failure handling.
+- `DeadLetterPublisher`: publishes terminal failures to `notification-events-dlq`.
+- `KafkaTopicConfig`: auto-creates DLQ topic.
+
+## End-to-End Flow
+
+1. Client sends `POST /notifications` with `userId`, `channel`, `message`.
+2. API validates payload and stores record in Postgres.
+3. API publishes event to Kafka topic `notification-events`.
+4. Worker consumes event from Kafka.
+5. Worker checks idempotency key in Redis.
+6. Worker applies per-user rate limit in Redis.
+7. Worker routes to provider based on channel.
+8. If provider call fails, worker retries with configured backoff.
+9. If retries are exhausted, worker publishes event to `notification-events-dlq`.
+10. Worker manually acknowledges Kafka message after success or DLQ handoff.
 
 ## Prerequisites
 
@@ -114,3 +171,10 @@ Run manually:
 docker run --rm -p 8080:8080 --name notification-api notification-api:local
 docker run --rm -p 8082:8082 --name notification-worker notification-worker:local
 ```
+
+## Author
+
+**Sahilkumar Prasad**
+- GitHub: [github.com/sahill1001](https://github.com/sahill1001)
+- LinkedIn: [linkedin.com/in/sahilkumar-prasad-74abba272](https://linkedin.com/in/sahilkumar-prasad-74abba272)
+- Email: prasadsahil06@gmail.com
