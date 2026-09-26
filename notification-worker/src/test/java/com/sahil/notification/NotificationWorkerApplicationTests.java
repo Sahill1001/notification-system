@@ -56,7 +56,7 @@ class NotificationWorkerApplicationTests {
 	@Test
 	void shouldSkipDuplicateMessages() {
 		NotificationEvent event = new NotificationEvent(1L, 101L, "EMAIL", "hello", "QUEUED");
-		when(idempotencyService.isDuplicate(1L)).thenReturn(true);
+		when(idempotencyService.isProcessed(1L)).thenReturn(true);
 
 		notificationProcessor.process(event);
 
@@ -66,7 +66,7 @@ class NotificationWorkerApplicationTests {
 	@Test
 	void shouldProcessNonDuplicateMessages() {
 		NotificationEvent event = new NotificationEvent(2L, 101L, "SMS", "otp", "QUEUED");
-		when(idempotencyService.isDuplicate(2L)).thenReturn(false);
+		when(idempotencyService.isProcessed(2L)).thenReturn(false);
 
 		notificationProcessor.process(event);
 

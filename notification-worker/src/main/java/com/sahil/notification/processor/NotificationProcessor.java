@@ -19,7 +19,7 @@ public class NotificationProcessor {
 
     public void process(NotificationEvent event) {
 
-        if (idempotencyService.isDuplicate(event.getId())) {
+        if (idempotencyService.isProcessed(event.getId())) {
 
             log.warn("Duplicate notification {}", event.getId());
 
@@ -29,5 +29,7 @@ public class NotificationProcessor {
         rateLimitService.assertWithinLimit(event);
 
         router.route(event);
+        // A failed provider attempt must remain eligible for the next retry.
+        idempotencyService.markProcessed(event.getId());
     }
 }

@@ -12,17 +12,15 @@ public class IdempotencyService {
 
     private final StringRedisTemplate redis;
 
-    public boolean isDuplicate(Long notificationId) {
+    // Completed-delivery deduplication, not an exactly-once delivery guarantee.
+    public boolean isProcessed(Long notificationId) {
+        return notificationId != null
+                && Boolean.TRUE.equals(redis.hasKey("notification:processed:" + notificationId));
+    }
 
-        if (notificationId == null) {
-            return false;
+    public void markProcessed(Long notificationId) {
+        if (notificationId != null) {
+            redis.opsForValue().set("notification:processed:" + notificationId, "1", Duration.ofHours(24));
         }
-
-        String key = "notification:processed:" + notificationId;
-
-        Boolean success = redis.opsForValue()
-                .setIfAbsent(key, "1", Duration.ofHours(24));
-
-        return Boolean.FALSE.equals(success);
     }
 }

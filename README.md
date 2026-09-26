@@ -1,5 +1,7 @@
 # Notification System
 
+Personal learning project using Java/Spring Boot, Kafka, PostgreSQL and Redis. Provider delivery is simulated when no endpoint is configured.
+
 Repository URL: https://github.com/Sahill1001/notification-system
 
 Two Spring Boot services:
@@ -40,7 +42,7 @@ Failure path:
 
 - `NotificationEventConsumer`: Kafka listener with manual acknowledgment and retry loop.
 - `NotificationProcessor`: orchestration for idempotency, rate-limit check, and routing.
-- `IdempotencyService`: Redis `SETNX` based duplicate protection.
+- `IdempotencyService`: Redis completed-delivery checks with a 24-hour TTL; completion is written only after provider routing succeeds.
 - `RateLimitService`: Redis counter + TTL (per-user per-minute throttling).
 - `ProviderRouter`: routes based on channel (`EMAIL`, `SMS`, `PUSH`).
 - `EmailProvider` / `SmsProvider` / `PushProvider`: provider-specific send adapters.
@@ -204,3 +206,18 @@ docker run --rm -p 8082:8082 --name notification-worker notification-worker:loca
 - GitHub: [github.com/sahill1001](https://github.com/sahill1001)
 - LinkedIn: [linkedin.com/in/sahilkumar-prasad-74abba272](https://linkedin.com/in/sahilkumar-prasad-74abba272)
 - Email: prasadsahil06@gmail.com
+
+## Retry regression and delivery limits
+
+A failed provider call previously wrote the duplicate marker before delivery, causing its retry to be skipped. The worker now checks for a completed delivery, routes the event, then records completion. A provider or rate-limit failure leaves no completed marker, so the next attempt can run.
+
+Run the unit suites with Java 21:
+
+```sh
+mvn -f notification-api/pom.xml test
+mvn -f notification-worker/pom.xml test
+```
+
+Regression tests use the real consumer, processor and completion-check service with mocked Redis/provider boundaries. They cover failure then success, successful redelivery suppression, exhausted retries, rate-limit failure and a Redis read error. They do not verify real Kafka, Redis or provider integration.
+
+Completion tracking is not an exactly-once guarantee: concurrent processing, a crash after provider success, or a failed Redis completion write can deliver twice. Provider-side idempotency is a future improvement. The existing API database/Kafka publication and asynchronous DLQ handoff also need durable delivery design before production use.
